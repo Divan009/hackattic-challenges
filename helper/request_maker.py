@@ -1,6 +1,6 @@
 import requests
 
-from config.url_builder import get_url_maker, post_url_maker
+from helper.url_builder import get_url_maker, post_url_maker
 
 
 class RequestMaker:

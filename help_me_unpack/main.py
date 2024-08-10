@@ -1,7 +1,7 @@
 import base64
 import struct
 
-from config.request_maker import RequestMaker
+from helper.request_maker import RequestMaker
 
 CHALLENGE_NAME = "help_me_unpack"
 

@@ -1,4 +1,4 @@
-from config.config import Config
+from helper.config import Config
 
 access_token = Config.load_env().access_token
 
