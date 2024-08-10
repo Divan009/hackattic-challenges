@@ -1,8 +1,9 @@
 import base64
-import struct 
-import requests
-import json
+import struct
 
+from config.request_maker import RequestMaker
+
+CHALLENGE_NAME = "help_me_unpack"
 
 def byte_to_value(data):
     base64_encoded_string = data.get("bytes")
@@ -11,7 +12,7 @@ def byte_to_value(data):
     return values
 
 def unpack_decoded_bytes(byte_data):
-    format_string = 'iIhfdd'  # Adjust as discussed above
+    format_string = 'iIhfdd' 
     unpacked_data = struct.unpack(format_string, byte_data)
     # Extract the last 8 bytes for the big-endian double
     last_double_bytes = byte_data[-8:]
@@ -28,11 +29,10 @@ def unpack_decoded_bytes(byte_data):
      
 
 if __name__ == '__main__':
-    url = 'https://hackattic.com/challenges/help_me_unpack/problem?access_token=b94a9e60c35e21d2'
-    response = requests.get(url)
-    response.raise_for_status()
+    challenge_handler = RequestMaker(CHALLENGE_NAME)
+    response = challenge_handler.fetch_problem()
 
-    print(type(byte_to_value(response.json())))
-    submit_url = 'https://hackattic.com/challenges/help_me_unpack/solve?access_token=b94a9e60c35e21d2'
-    response = requests.post(submit_url, data=json.dumps(byte_to_value(response.json())))
-    print(response.content)
+    solution = byte_to_value(response.json())
+
+    solution_handler = challenge_handler.submit_solution(solution)
+    print(solution_handler.json())
