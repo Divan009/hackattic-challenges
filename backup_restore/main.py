@@ -1,10 +1,10 @@
 import dataclasses
 import gzip
-import json
-import os
 import subprocess
 from base64 import b64decode
+
 import psycopg
+
 from config.config import Config
 from config.request_maker import RequestMaker
 
@@ -19,7 +19,7 @@ class BackupRestore:
     dbname: str
     port: str
     user: str
-    dump_file_path: str
+    uncompressed_dump: str
 
     def restoring_dump(self):
         restore_command = [
@@ -27,29 +27,25 @@ class BackupRestore:
             '-h', self.host,
             '-p', self.port,
             '-U', self.user,
-            '-v',
             '-d', self.dbname,
-            '-f', self.dump_file_path,
         ]
 
         try:
-            subprocess.run(restore_command, check=True, env={"PGPASSWORD": conf.db_password})
-            print("Restored DB")
+            result = subprocess.run(restore_command, check=True, input=self.uncompressed_dump, text=True,env={"PGPASSWORD": conf.db_password})
+            print("Restored DB successfully.")
+            print(f"Output: {result.stdout}")
+            if result.stderr:
+                print(f"Warnings/Errors: {result.stderr}")
         except subprocess.CalledProcessError as e:
             print(f"An error occurred while restoring the database: {e}")
+            print(f"Command Output: {e.output}")
+            print(f"Command Stderr: {e.stderr}")
 
 
 def write_encoded_dump_to_file(base64_str) -> str:
     decoded_base64_as_bytes = b64decode(base64_str)
-    decompressed_data = gzip.decompress(decoded_base64_as_bytes)
-
-    relative_path = "utils/backup_restore_dump.sql"
-    absolute_path = os.path.abspath(relative_path)
-
-    with open(relative_path, "w") as f:
-        f.write(decompressed_data.decode("utf-8"))
-
-    return absolute_path
+    decompressed_data = gzip.decompress(decoded_base64_as_bytes).decode('utf-8')
+    return decompressed_data
 
 
 def get_alive_ssn() -> list:
@@ -58,27 +54,26 @@ def get_alive_ssn() -> list:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT ssn FROM criminal_records WHERE status='alive';
+                SELECT ssn FROM criminal_records WHERE status='alive'
                 """
             )
 
             records = cursor.fetchall()
 
-    alive_ssn_records = [ssn[0] for ssn in records]
-    return alive_ssn_records
+    return [ssn[0] for ssn in records]
 
 
 def solution(response):
     base64_str = response.get("dump")
 
-    dump_file_path = write_encoded_dump_to_file(base64_str)
+    uncompressed_dump = write_encoded_dump_to_file(base64_str)
 
     backup_restore = BackupRestore(
         host=conf.db_host,
         dbname=conf.db_name,
         port=conf.db_port,
         user=conf.db_user,
-        dump_file_path=dump_file_path
+        uncompressed_dump=uncompressed_dump
     )
     backup_restore.restoring_dump()
 
